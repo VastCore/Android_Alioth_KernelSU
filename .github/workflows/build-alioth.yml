@@ -58,17 +58,9 @@ jobs:
 
       - name: Add KSU configs
         run: |
-          DEF=arch/arm64/configs/alioth_kosminor_defconfig
-          # 基础KSU
-          grep -q '^CONFIG_KSU=y' "$DEF" || echo 'CONFIG_KSU=y' >> "$DEF"
-          grep -q '^CONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y' "$DEF" || echo 'CONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y' >> "$DEF"
-          # 修复exec未定义符号核心两项
-          grep -q '^CONFIG_KSU_HOOK_EXEC=y' "$DEF" || echo 'CONFIG_KSU_HOOK_EXEC=y' >> "$DEF"
-          grep -q '^CONFIG_KSU_SUCOMPAT=y' "$DEF" || echo 'CONFIG_KSU_SUCOMPAT=y' >> "$DEF"
-          # 可选：完整开启exec全拦截（推荐加上）
-          grep -q '^CONFIG_KSU_HOOK_ALL_EXEC=y' "$DEF" || echo 'CONFIG_KSU_HOOK_ALL_EXEC=y' >> "$DEF"
-          echo "=== Updated KSU configs ==="
-          tail -10 "$DEF"
+          sed -i -e '$a\'$'\n''CONFIG_KSU=y\nCONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y' arch/arm64/configs/alioth_kosminor_defconfig
+          echo "=== KSU configs appended ==="
+          tail -5 arch/arm64/configs/alioth_kosminor_defconfig
 
       - name: Build Kernel
         run: |
