@@ -1,4 +1,4 @@
-name: Build Alioth (Release)
+name: Build Alioth
 # 限制并发，同设备只跑一次构建
 concurrency:
   group: alioth-kernel-release
