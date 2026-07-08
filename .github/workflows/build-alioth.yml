@@ -1,9 +1,9 @@
-name: Build Alioth (Droidspaces)
+name: Build Alioth
 on: [workflow_dispatch]
 
 jobs:
   build:
-    name: 使用Droidspaces配置构建内核
+    name: 构建内核
     runs-on: ubuntu-24.04
     steps:
 
@@ -55,18 +55,6 @@ jobs:
           grep -q 'source.*kernelsu/Kconfig' drivers/Kconfig && echo "Kconfig ref: OK"
           grep -q 'obj.*kernelsu/' drivers/Makefile && echo "Makefile ref: OK"
           ls drivers/kernelsu/
-
-      - name: 验证 Droidspaces 配置
-        run: |
-          echo "=== Droidspaces config check ==="
-          for cfg in CONFIG_PID_NS=y CONFIG_DEVTMPFS=y CONFIG_CGROUP_DEVICE=y \
-                     CONFIG_OVERLAY_FS=y CONFIG_NET_NS=y CONFIG_VETH=y; do
-            if grep -q "$cfg" arch/arm64/configs/alioth_kosminor_defconfig; then
-              echo "  OK  $cfg"
-            else
-              echo "  MISSING  $cfg"
-            fi
-          done
 
       - name: 添加KSU配置
         run: |
