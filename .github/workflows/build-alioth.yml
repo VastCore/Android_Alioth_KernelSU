@@ -66,7 +66,7 @@ jobs:
         run: |
           export LOCALVERSION="-g92c089fc2d37"
           export KBUILD_BUILD_HOST=AICloudServer
-          export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
+          export KBUILD_BUILD_USER=VastCore
           export ARCH="arm64"
           export SUBARCH="arm64"
           export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
