@@ -89,8 +89,5 @@ jobs:
           name: Alioth_Kernel_Ksu
           path: |
             out/arch/arm64/boot/Image
-            out/arch/arm64/boot/Image.gz
             out/arch/arm64/boot/dts/vendor/qcom/*.dtb
             out/arch/arm64/boot/dtbo.img
-            out/vmlinux
-            out/System.map
