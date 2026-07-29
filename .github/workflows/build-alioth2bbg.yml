@@ -1,0 +1,136 @@
+name: Build Alioth2bbg (Release)
+on: [workflow_dispatch]
+
+env:
+  DEFCONFIG: arch/arm64/configs/alioth_kosminor_defconfig
+  BUILD_LOG: build_log.txt
+
+jobs:
+  build:
+    name: Build Alioth2bbg (Release)
+    runs-on: ubuntu-24.04
+    steps:
+
+      - name: Set Beijing timezone
+        uses: szenius/set-timezone@v1.2
+        with:
+          timezoneLinux: "Asia/Shanghai"
+
+      - name: Set SWAP to 5GiB
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 5
+
+      - name: Initialize Compilation Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install git automake build-essential bc wget tar perl zip unzip -y
+          rm -rf out toolchain ${{ env.BUILD_LOG }}
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: hyper-2
+          fetch-depth: 1
+
+      - name: Get Toolchain (WeebX-Clang + Python2)
+        run: |
+          mkdir -p toolchain/llvm
+          # Download WeebX-Clang 19.1.5
+          wget https://github.com/XSans0/WeebX-Clang/releases/download/WeebX-Clang-19.1.5-release/WeebX-Clang-19.1.5.tar.gz
+          # Extract clang toolchain to toolchain/llvm
+          tar -xf WeebX-Clang-19.1.5.tar.gz -C toolchain/llvm --strip-components=1
+          # Pull python2 prebuilt (unchanged)
+          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
+          # Cleanup archive
+          rm -rf WeebX-Clang-19.1.5.tar.gz
+
+      - name: Processing submodules
+        run: |
+          git submodule update --init --recursive android/Installer
+          git submodule update --init --recursive Baseband-guard
+          git submodule update --init --recursive KernelSU
+          cd KernelSU
+          git fetch --tags
+          LATEST_TAG=$(git tag -l | sort -V | tail -n1)
+          echo "Latest KernelSU tag: $LATEST_TAG" >> ${{ env.BUILD_LOG }}
+          git checkout $LATEST_TAG
+          cd $GITHUB_WORKSPACE
+
+      - name: Integrate KernelSU into build system
+        run: |
+          echo "=== Remove symlink, copy real directory instead ===" >> ${{ env.BUILD_LOG }}
+          rm -f drivers/kernelsu
+          cp -ra KernelSU/kernel drivers/kernelsu
+          echo "=== Verify KSU integration ===" >> ${{ env.BUILD_LOG }}
+          test -f drivers/kernelsu/Kconfig && echo "KSU Kconfig: OK" >> ${{ env.BUILD_LOG }}
+          test -f drivers/kernelsu/Makefile && echo "KSU Makefile: OK" >> ${{ env.BUILD_LOG }}
+
+      # ===================== 新增 BBG 集成步骤 =====================
+      - name: Integrate Baseband-guard (BBG)
+        run: |
+          echo "=== Integrate Baseband-Guard LSM module ===" >> ${{ env.BUILD_LOG }}
+          rm -rf drivers/baseband_guard
+          cp -ra Baseband-guard/kernel drivers/baseband_guard
+          # 注入顶层Kconfig
+          grep -q 'source "drivers/baseband_guard/Kconfig"' drivers/Kconfig || \
+          echo 'source "drivers/baseband_guard/Kconfig"' >> drivers/Kconfig
+          # 注入顶层Makefile编译项
+          grep -q 'obj-$(CONFIG_BBG) += baseband_guard/' drivers/Makefile || \
+          echo 'obj-$(CONFIG_BBG) += baseband_guard/' >> drivers/Makefile
+          test -f drivers/baseband_guard/Kconfig && echo "BBG Integrated Success" >> ${{ env.BUILD_LOG }}
+
+      # 修改配置写入步骤：KSU + BBG 合并，去重不重复追加
+      - name: Inject KSU & BBG defconfig
+        run: |
+          CONFIG=${{ env.DEFCONFIG }}
+          # KSU 配置（存在则不重复添加）
+          grep -q "^CONFIG_KSU=y" $CONFIG || echo "CONFIG_KSU=y" >> $CONFIG
+          grep -q "^CONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y" $CONFIG || echo "CONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y" >> $CONFIG
+          # BBG 总开关 CONFIG_BBG=y
+          grep -q "^CONFIG_BBG=y" $CONFIG || echo "CONFIG_BBG=y" >> $CONFIG
+          # 关键：将BBG加入LSM安全模块列表，否则内核不加载防护
+          grep "CONFIG_LSM=" $CONFIG | grep -q "baseband_guard" || sed -i '/CONFIG_LSM=/ s/$/,baseband_guard/' $CONFIG
+
+          echo "=== Final defconfig tail ===" >> ${{ env.BUILD_LOG }}
+          tail -10 $CONFIG >> ${{ env.BUILD_LOG }}
+
+      - name: Build Kernel
+        run: |
+          export LOCALVERSION="-g92c089fc2d37"
+          export KBUILD_BUILD_HOST=AICloudServer
+          export KBUILD_BUILD_USER=VastCore
+          export ARCH="arm64"
+          export SUBARCH="arm64"
+          export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
+          export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+          export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
+          export CC=clang
+          export LLVM=1
+          export LLVM_IAS=1
+          export CLANG_TRIPLE="aarch64-linux-gnu-"
+          export CROSS_COMPILE="aarch64-linux-android-"
+          
+          make O=out ${{ env.DEFCONFIG }} 2>&1 | tee -a ${{ env.BUILD_LOG }}
+          echo "=== Check KSU & BBG in .config ===" >> ${{ env.BUILD_LOG }}
+          grep CONFIG_KSU out/.config >> ${{ env.BUILD_LOG }} || echo "WARNING: CONFIG_KSU missing!" >> ${{ env.BUILD_LOG }}
+          grep CONFIG_BBG out/.config >> ${{ env.BUILD_LOG }} || echo "WARNING: CONFIG_BBG missing!" >> ${{ env.BUILD_LOG }}
+          grep CONFIG_LSM out/.config >> ${{ env.BUILD_LOG }}
+          make -j$(nproc --all) O=out 2>&1 | tee -a ${{ env.BUILD_LOG }}
+
+      - name: Upload Build Log (always run)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Compile_Log
+          path: ${{ env.BUILD_LOG }}
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Alioth_Kernel_Ksu_BBG
+          path: |
+            out/arch/arm64/boot/Image
+            out/arch/arm64/boot/dts/vendor/qcom/*.dtb
+            out/arch/arm64/boot/dtbo.img
