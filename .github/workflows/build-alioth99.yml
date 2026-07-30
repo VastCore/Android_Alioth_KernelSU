@@ -59,7 +59,7 @@ jobs:
       - name: Add KSU configs + LKM 模块必备配置
         run: |
           # 内置KSU开关
-          echo "CONFIG_KSU=y" >> arch/arm64/configs/alioth_kosminor_defconfig
+          echo "CONFIG_KSU=m" >> arch/arm64/configs/alioth_kosminor_defconfig
           echo "CONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y" >> arch/arm64/configs/alioth_kosminor_defconfig
           # LKM模块全套依赖
           echo "CONFIG_MODULES=y" >> arch/arm64/configs/alioth_kosminor_defconfig
