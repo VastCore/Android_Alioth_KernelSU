@@ -1,9 +1,9 @@
-name: Build Alioth (Proton-Clang)
+name: Build Alioth (Proton Clang)
 on: [workflow_dispatch]
 
 jobs:
   build:
-    name: Build Alioth (Proton-Clang)
+    name: Build Alioth (Proton Clang)
     runs-on: ubuntu-24.04
     steps:
 
@@ -20,8 +20,7 @@ jobs:
       - name: Initialize Compilation Environment
         run: |
           sudo apt-get update
-          # 删除多余的 ld，build-essential 自带 binutils(ld)
-          sudo apt-get install git automake build-essential bc wget tar unzip gcc -y
+          sudo apt-get install git automake build-essential bc wget tar xz-utils unzip -y
           
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -29,14 +28,23 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain (Proton-Clang + Python2)
+      - name: Get Toolchain (Proton Clang + Python2)
         run: |
-          mkdir -p toolchain/llvm
-          wget https://github.com/kdrag0n/proton-clang/archive/refs/tags/20210522.zip -O proton-clang.zip
-          unzip -q proton-clang.zip
-          mv proton-clang-20210522/* toolchain/llvm/
-          rm -rf proton-clang-20210522 proton-clang.zip
+          mkdir -p toolchain
+          # Download Proton Clang 20210522
+          mkdir -p "$HOME/proton-clang"
+          wget -q \
+            https://github.com/kdrag0n/proton-clang/archive/refs/tags/20210522.zip \
+            -O /tmp/proton-clang.zip
+          unzip -q /tmp/proton-clang.zip -d "$HOME/proton-clang"
+          # 软链接到项目toolchain目录方便PATH调用
+          ln -s "$HOME/proton-clang/proton-clang-20210522" toolchain/proton-clang
+          # Pull python2 prebuilt 保留不变
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
+          # Cleanup archive
+          rm -rf /tmp/proton-clang.zip
+          # 验证clang版本
+          toolchain/proton-clang/bin/clang --version
 
       - name: Processing submodules
         run: |
@@ -66,29 +74,20 @@ jobs:
           echo "=== KSU configs appended ==="
           tail -5 arch/arm64/configs/alioth_perf_defconfig
 
-      - name: Build Kernel (Fix relr.dyn + missing lld)
+      - name: Build Kernel
         run: |
           export LOCALVERSION="-g92c089fc2d37"
           export KBUILD_BUILD_HOST=pangu-build-component-vendor-727090-8pdx4-w2b4x-lb74b
           export KBUILD_BUILD_USER=builder
           export ARCH="arm64"
           export SUBARCH="arm64"
-
-          # PATH 前置保证能找到 ld.lld / llvm-objdump
-          export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
-
-          # 主机编译强制系统 ld，规避 relr.dyn 报错
-          export HOSTCC=gcc
-          export HOSTLD=/usr/bin/ld
-          # 内核链接强制 lld
-          export LD=ld.lld
-
+          export PATH="$GITHUB_WORKSPACE/toolchain/proton-clang/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/proton-clang/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
           export CLANG_TRIPLE="aarch64-linux-gnu-"
           export CROSS_COMPILE="aarch64-linux-android-"
-
           make O=out alioth_perf_defconfig
           echo "=== CONFIG_KSU in .config ==="
           grep CONFIG_KSU out/.config || echo "WARNING: CONFIG_KSU NOT in .config!"
