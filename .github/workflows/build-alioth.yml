@@ -57,9 +57,9 @@ jobs:
 
       - name: Add KSU configs
         run: |
-          sed -i -e '$a\'$'\n''CONFIG_KSU=y\nCONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y' arch/arm64/configs/alioth_kosminor_defconfig
+          sed -i -e '$a\'$'\n''CONFIG_KSU=y\nCONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y' arch/arm64/configs/alioth_perf_defconfig
           echo "=== KSU configs appended ==="
-          tail -5 arch/arm64/configs/alioth_kosminor_defconfig
+          tail -5 arch/arm64/configs/alioth_perf_defconfig
 
       - name: Build Kernel
         run: |
@@ -77,7 +77,7 @@ jobs:
           export LLVM_IAS=1
           export CLANG_TRIPLE="aarch64-linux-gnu-"
           export CROSS_COMPILE="aarch64-linux-android-"
-          make O=out alioth_kosminor_defconfig
+          make O=out alioth_perf_defconfig
           echo "=== CONFIG_KSU in .config ==="
           grep CONFIG_KSU out/.config || echo "WARNING: CONFIG_KSU NOT in .config!"
           make -j$(nproc --all) O=out 2>&1
