@@ -87,7 +87,6 @@ jobs:
         with:
           name: Alioth_KernelSU
           path: |
-            out
             out/arch/arm64/boot/Image
             out/arch/arm64/boot/dts/vendor/qcom/*.dtb
             out/arch/arm64/boot/dtbo.img
