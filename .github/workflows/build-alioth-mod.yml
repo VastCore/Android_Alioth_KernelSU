@@ -53,10 +53,8 @@ jobs:
 
       - name: Get Toolchain（加ghproxy防git 128报错）
         run: |
-          git clone https://mirror.ghproxy.com/https://gitlab.com/ThankYouMario/android_prebuilts_clang-standalone.git --depth 1 toolchain/llvm
-          git clone https://mirror.ghproxy.com/https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
-          # 软链接python2防止内核脚本找不到python
-          sudo ln -sf $GITHUB_WORKSPACE/toolchain/python2/bin/python2 /usr/local/bin/python
+          git clone https://gitlab.com/ThankYouMario/android_prebuilts_clang-standalone.git --depth 1 toolchain/llvm
+          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
 
       - name: Processing submodules
         run: |
