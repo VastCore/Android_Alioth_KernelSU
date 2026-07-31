@@ -35,7 +35,6 @@ jobs:
 
       - name: Processing submodules
         run: |
-          git submodule update --init --recursive android/Installer
           git submodule update --init --recursive Baseband-guard
           git submodule update --init --recursive KernelSU
           cd KernelSU
