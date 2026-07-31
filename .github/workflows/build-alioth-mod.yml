@@ -21,10 +21,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install git automake build-essential bc -y
-          # 全局git配置防128超时
-          git config --global http.timeout 300
-          git config --global http.lowSpeedLimit 1000
-          git config --global http.lowSpeedTime 60
 
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -36,7 +32,7 @@ jobs:
       - name: Safe Custom Compiler String (No Script Break)
         run: |
           # 你要自定义的编译器文字（直接改这里即可）
-          CUSTOM_COMPILER='clang version 10.0.7 for Android NDK, GNU ld (binutils-2.27-bd24d23f) 2.27.0.20170315'
+          CUSTOM_COMPILER="clang version 10.0.7 for Android NDK, GNU ld (binutils-2.27-bd24d23f) 2.27.0.20170315"
 
           # 1. 把入参 CC_VERSION=$5 强制替换为自定义字符串
           sed -i "s|^CC_VERSION=\$5|CC_VERSION='$CUSTOM_COMPILER'|" scripts/mkcompile_h
@@ -51,7 +47,7 @@ jobs:
           bash -n scripts/mkcompile_h
           echo "✅ mkcompile_h 脚本修改完成，语法校验通过"
 
-      - name: Get Toolchain（加ghproxy防git 128报错）
+      - name: Get Toolchain
         run: |
           git clone https://gitlab.com/ThankYouMario/android_prebuilts_clang-standalone.git --depth 1 toolchain/llvm
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
@@ -93,7 +89,6 @@ jobs:
           export SUBARCH="arm64"
           export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
-          # 删掉原来抓取clang/lld的两行export，避免冲突
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
@@ -107,7 +102,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Alioth_Kernel_Ksu
+          name: Alioth_KernelSU
           path: |
             out/arch/arm64/boot/Image
             out/arch/arm64/boot/dts/vendor/qcom/*.dtb
