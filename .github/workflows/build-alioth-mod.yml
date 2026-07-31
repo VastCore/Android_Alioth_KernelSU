@@ -63,12 +63,12 @@ jobs:
           
       - name: Force custom compiler banner string
         run: |
-          CUSTOM_COMPILER_STR="clang version 10.0.7 for Android NDK, GNU ld (binutils-2.27-bd24d23f) 2.27.0.20170315"
-          sed -i "s|CC_VERSION=\"\$5\"|CC_VERSION=\"${CUSTOM_COMPILER_STR}\"|" scripts/mkcompile_h
-          sed -i '/LD_VERSION=\$(\$LD -v/,/printf /d' scripts/mkcompile_h
-          sed -i '$a\printf \'#define LINUX_COMPILER "%s"\n\' "\$CC_VERSION"' scripts/mkcompile_h
+          CUSTOM_COMPILER_STR='clang version 10.0.7 for Android NDK, GNU ld (binutils-2.27-bd24d23f) 2.27.0.20170315'
+          sed -i "s|CC_VERSION=\"\$5\"|CC_VERSION=\"$CUSTOM_COMPILER_STR\"|" scripts/mkcompile_h
+          sed -i '/LD_VERSION=\$(\$LD -v/,/printf/d' scripts/mkcompile_h
+          echo 'printf "#define LINUX_COMPILER \"%s\"\n" "$CC_VERSION"' >> scripts/mkcompile_h
           grep -E "CC_VERSION|LINUX_COMPILER" scripts/mkcompile_h
-
+    
       - name: Build Kernel
         run: |
           export LOCALVERSION="-g92c089fc2d37"
