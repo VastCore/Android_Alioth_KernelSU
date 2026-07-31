@@ -1,9 +1,9 @@
-name: Build Alioth (Proton Clang)
+name: Build Alioth (Proton-Clang)
 on: [workflow_dispatch]
 
 jobs:
   build:
-    name: Build Alioth (Proton Clang)
+    name: Build Alioth (Proton-Clang)
     runs-on: ubuntu-22.04
     steps:
 
@@ -20,7 +20,7 @@ jobs:
       - name: Initialize Compilation Environment
         run: |
           sudo apt-get update
-          sudo apt-get install git automake build-essential bc wget tar xz-utils unzip -y
+          sudo apt-get install git automake build-essential bc wget tar unzip -y
           
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,23 +28,15 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain (Proton Clang + Python2)
+      - name: Get Toolchain (Proton-Clang + Python2)
         run: |
-          mkdir -p toolchain
-          # Download Proton Clang 20210522
-          mkdir -p "$HOME/proton-clang"
-          wget -q \
-            https://github.com/kdrag0n/proton-clang/archive/refs/tags/20210522.zip \
-            -O /tmp/proton-clang.zip
-          unzip -q /tmp/proton-clang.zip -d "$HOME/proton-clang"
-          # 软链接到项目toolchain目录方便PATH调用
-          ln -s "$HOME/proton-clang/proton-clang-20210522" toolchain/proton-clang
-          # Pull python2 prebuilt 保留不变
+          mkdir -p toolchain/llvm
+          wget https://github.com/kdrag0n/proton-clang/archive/refs/tags/20210522.zip -O proton-clang.zip
+          unzip -q proton-clang.zip -d toolchain/llvm
+          mv toolchain/llvm/proton-clang-20210522/* toolchain/llvm/
+          rm -rf toolchain/llvm/proton-clang-20210522
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
-          # Cleanup archive
-          rm -rf /tmp/proton-clang.zip
-          # 验证clang版本
-          toolchain/proton-clang/bin/clang --version
+          rm -rf proton-clang.zip
 
       - name: Processing submodules
         run: |
@@ -79,10 +71,14 @@ jobs:
           export LOCALVERSION="-g92c089fc2d37"
           export KBUILD_BUILD_HOST=pangu-build-component-vendor-727090-8pdx4-w2b4x-lb74b
           export KBUILD_BUILD_USER=builder
+          # export KBUILD_BUILD_HOST=AICloudServer
+          # export KBUILD_BUILD_USER=VastCore
           export ARCH="arm64"
           export SUBARCH="arm64"
-          export PATH="$GITHUB_WORKSPACE/toolchain/proton-clang/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
-          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/proton-clang/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
+          export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
+          # export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+          # export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
