@@ -69,7 +69,7 @@ jobs:
           sed -i '$a\printf \'#define LINUX_COMPILER "%s"\n\' "\$CC_VERSION"' scripts/mkcompile_h
           grep -E "CC_VERSION|LINUX_COMPILER" scripts/mkcompile_h
 
-    - name: Build Kernel
+      - name: Build Kernel
         run: |
           export LOCALVERSION="-g92c089fc2d37"
           export KBUILD_BUILD_HOST=AICloudServer
