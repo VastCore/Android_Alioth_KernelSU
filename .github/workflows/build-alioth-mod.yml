@@ -1,9 +1,9 @@
-name: Build Alioth Mod(Release)
+name: Build Alioth (Release)
 on: [workflow_dispatch]
 
 jobs:
   build:
-    name: Build Alioth Mod(Release)
+    name: Build Alioth (Release)
     runs-on: ubuntu-24.04
     steps:
 
@@ -21,17 +21,42 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install git automake build-essential bc -y
-          
+          # 全局git配置防128超时
+          git config --global http.timeout 300
+          git config --global http.lowSpeedLimit 1000
+          git config --global http.lowSpeedTime 60
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain
+      # ========== 安全修改 mkcompile_h 步骤（无语法破坏） ==========
+      - name: Safe Custom Compiler String (No Script Break)
         run: |
-          git clone https://gitlab.com/ThankYouMario/android_prebuilts_clang-standalone.git --depth 1 toolchain/llvm
-          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
+          # 你要自定义的编译器文字（直接改这里即可）
+          CUSTOM_COMPILER='clang version 10.0.7 for Android NDK, GNU ld (binutils-2.27-bd24d23f) 2.27.0.20170315'
+
+          # 1. 把入参 CC_VERSION=$5 强制替换为自定义字符串
+          sed -i "s|^CC_VERSION=\$5|CC_VERSION='$CUSTOM_COMPILER'|" scripts/mkcompile_h
+
+          # 2. 注释掉LD_VERSION自动获取行（不删除，保证脚本结构完整）
+          sed -i 's/^LD_VERSION=/#LD_VERSION=/' scripts/mkcompile_h
+
+          # 3. 修改打印行，移除 , $LD_VERSION，不再拼接链接器版本
+          sed -i 's|printf '\''#define LINUX_COMPILER "%s"\n'\'' "$CC_VERSION, $LD_VERSION"|printf '\''#define LINUX_COMPILER "%s"\n'\'' "$CC_VERSION"|' scripts/mkcompile_h
+
+          # 语法校验，提前发现错误
+          bash -n scripts/mkcompile_h
+          echo "✅ mkcompile_h 脚本修改完成，语法校验通过"
+
+      - name: Get Toolchain（加ghproxy防git 128报错）
+        run: |
+          git clone https://mirror.ghproxy.com/https://gitlab.com/ThankYouMario/android_prebuilts_clang-standalone.git --depth 1 toolchain/llvm
+          git clone https://mirror.ghproxy.com/https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
+          # 软链接python2防止内核脚本找不到python
+          sudo ln -sf $GITHUB_WORKSPACE/toolchain/python2/bin/python2 /usr/local/bin/python
 
       - name: Processing submodules
         run: |
@@ -57,18 +82,10 @@ jobs:
 
       - name: Add KSU configs
         run: |
-          sed -i -e '$a\'$'\n''CONFIG_KSU=y\nCONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y' arch/arm64/configs/alioth_perf_defconfig
+          sed -i -e '$a\'$'\n''CONFIG_KSU=y\nCONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y' arch/arm64/configs/alioth_kosminor_defconfig
           echo "=== KSU configs appended ==="
-          tail -5 arch/arm64/configs/alioth_perf_defconfig
-          
-      - name: Force custom compiler banner string
-        run: |
-          CUSTOM_COMPILER_STR='clang version 10.0.7 for Android NDK, GNU ld (binutils-2.27-bd24d23f) 2.27.0.20170315'
-          sed -i "s|CC_VERSION=\"\$5\"|CC_VERSION=\"$CUSTOM_COMPILER_STR\"|" scripts/mkcompile_h
-          sed -i '/LD_VERSION=\$(\$LD -v/,/printf/d' scripts/mkcompile_h
-          echo 'printf "#define LINUX_COMPILER \"%s\"\n" "$CC_VERSION"' >> scripts/mkcompile_h
-          grep -E "CC_VERSION|LINUX_COMPILER" scripts/mkcompile_h
-    
+          tail -5 arch/arm64/configs/alioth_kosminor_defconfig
+
       - name: Build Kernel
         run: |
           export LOCALVERSION="-g92c089fc2d37"
@@ -78,12 +95,13 @@ jobs:
           export SUBARCH="arm64"
           export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
+          # 删掉原来抓取clang/lld的两行export，避免冲突
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
           export CLANG_TRIPLE="aarch64-linux-gnu-"
           export CROSS_COMPILE="aarch64-linux-android-"
-          make O=out alioth_perf_defconfig
+          make O=out alioth_kosminor_defconfig
           echo "=== CONFIG_KSU in .config ==="
           grep CONFIG_KSU out/.config || echo "WARNING: CONFIG_KSU NOT in .config!"
           make -j$(nproc --all) O=out 2>&1
@@ -91,8 +109,9 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Alioth_KernelSU
+          name: Alioth_Kernel_Ksu
           path: |
             out/arch/arm64/boot/Image
-           # out/arch/arm64/boot/dts/vendor/qcom/*.dtb
-           # out/arch/arm64/boot/dtbo.img
+            out/arch/arm64/boot/dts/vendor/qcom/*.dtb
+            out/arch/arm64/boot/dtbo.img
+ 
