@@ -20,7 +20,7 @@ jobs:
       - name: Initialize Compilation Environment
         run: |
           sudo apt-get update
-          sudo apt-get install git automake build-essential bc wget tar unzip -y
+          sudo apt-get install git automake build-essential bc wget tar unzip gcc ld -y
           
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -31,13 +31,10 @@ jobs:
       - name: Get Toolchain (Proton-Clang + Python2)
         run: |
           mkdir -p toolchain/llvm
-          # Download proton-clang 20210522 zip
           wget https://github.com/kdrag0n/proton-clang/archive/refs/tags/20210522.zip -O proton-clang.zip
-          # Unzip to temp dir then move contents to llvm folder
           unzip -q proton-clang.zip
           mv proton-clang-20210522/* toolchain/llvm/
           rm -rf proton-clang-20210522 proton-clang.zip
-          # Pull python2 prebuilt (unchanged)
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
 
       - name: Processing submodules
@@ -68,24 +65,28 @@ jobs:
           echo "=== KSU configs appended ==="
           tail -5 arch/arm64/configs/alioth_perf_defconfig
 
-      - name: Build Kernel
+      - name: Build Kernel (Fix relr.dyn linker conflict)
         run: |
           export LOCALVERSION="-g92c089fc2d37"
           export KBUILD_BUILD_HOST=pangu-build-component-vendor-727090-8pdx4-w2b4x-lb74b
           export KBUILD_BUILD_USER=builder
-          # export KBUILD_BUILD_HOST=AICloudServer
-          # export KBUILD_BUILD_USER=VastCore
           export ARCH="arm64"
           export SUBARCH="arm64"
-          export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
-          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
-          # export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
-          # export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
+
+          # 追加PATH 而不是前置覆盖系统链接器
+          CLANG_PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin"
+          export PATH="$PATH:$CLANG_PATH:$GITHUB_WORKSPACE/toolchain/python2/bin"
+
+          # 强制主机编译使用系统gcc/ld，避开旧lld冲突
+          export HOSTCC=gcc
+          export HOSTLD=/usr/bin/ld
+
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
           export CLANG_TRIPLE="aarch64-linux-gnu-"
           export CROSS_COMPILE="aarch64-linux-android-"
+
           make O=out alioth_perf_defconfig
           echo "=== CONFIG_KSU in .config ==="
           grep CONFIG_KSU out/.config || echo "WARNING: CONFIG_KSU NOT in .config!"
