@@ -1,9 +1,9 @@
-name: Build Alioth (ZyCromerZ-Clang)
+name: Build Alioth (ZYC-Clang)
 on: [workflow_dispatch]
 
 jobs:
   build:
-    name: Build Alioth (ZyCromerZ-Clang)
+    name: Build Alioth (ZYC-Clang)
     runs-on: ubuntu-24.04
     steps:
 
@@ -20,7 +20,7 @@ jobs:
       - name: Initialize Compilation Environment
         run: |
           sudo apt-get update
-          sudo apt-get install git automake build-essential bc wget tar -y
+          sudo apt-get install git automake build-essential bc wget tar xz-utils unzip -y
           
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,17 +28,17 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain (ZyCromerZ-Clang + Python2)
+      - name: Get Toolchain (ZYC-Clang + Python2)
         run: |
-          mkdir -p toolchain/llvm
-          # Download ZyCromerZ Clang
-          wget https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
-          # Extract clang toolchain to toolchain/llvm
-          tar -xf Clang-16.0.6-20260510.tar.gz -C toolchain/llvm --strip-components=1
-          # Pull python2 prebuilt (unchanged)
+          mkdir -p toolchain
+          mkdir -p $HOME/zyc-clang
+          cd $HOME/zyc-clang
+          wget -q https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
+          tar -zxvf Clang-16.0.6-20260510.tar.gz
+          ln -s "$HOME/zyc-clang" toolchain/zyc-clang
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
-          # Cleanup archive
-          rm -rf Clang-16.0.6-20260510.tar.gz
+          rm -rf $HOME/zyc-clang/Clang-16.0.6-20260510.tar.gz
+          toolchain/zyc-clang/bin/clang --version
 
       - name: Processing submodules
         run: |
@@ -75,22 +75,13 @@ jobs:
           export KBUILD_BUILD_USER=builder
           export ARCH="arm64"
           export SUBARCH="arm64"
-          export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
-          
-          # ========== 修复项开始 ==========
-          # 删掉LD_LIBRARY_PATH，彻底规避relr.dyn不兼容
-          # 主机编译使用系统gcc/ld，内核编译强制ld.lld
-          export HOSTCC=gcc
-          export HOSTLD=/usr/bin/ld
-          export LD=ld.lld
-          # ========== 修复项结束 ==========
-
+          export PATH="$GITHUB_WORKSPACE/toolchain/zyc-clang/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/zyc-clang/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
           export CLANG_TRIPLE="aarch64-linux-gnu-"
           export CROSS_COMPILE="aarch64-linux-android-"
-          
           make O=out alioth_perf_defconfig
           echo "=== CONFIG_KSU in .config ==="
           grep CONFIG_KSU out/.config || echo "WARNING: CONFIG_KSU NOT in .config!"
@@ -99,7 +90,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Alioth_KernelSU
+          name: Alioth_KernelSU_ZYC-Clang16
           path: |
             out/arch/arm64/boot/Image
             out/arch/arm64/boot/dts/vendor/qcom/*.dtb
