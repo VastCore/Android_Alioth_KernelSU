@@ -61,7 +61,7 @@ jobs:
           echo "=== KSU configs appended ==="
           tail -5 arch/arm64/configs/alioth_perf_defconfig
 
-    - name: Build Kernel
+      - name: Build Kernel
         run: |
           export LOCALVERSION="-g92c089fc2d37"
           export KBUILD_BUILD_HOST=AICloudServer
