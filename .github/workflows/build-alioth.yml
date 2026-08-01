@@ -60,6 +60,11 @@ jobs:
           sed -i -e '$a\'$'\n''CONFIG_KSU=y\nCONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y' arch/arm64/configs/alioth_perf_defconfig
           echo "=== KSU configs appended ==="
           tail -5 arch/arm64/configs/alioth_perf_defconfig
+          
+      - name: Custom clang version
+        run: |
+          sed -i '/^LD_VERSION=\$(\$LD -v/s/^/#/' scripts/mkcompile_h
+          sed -i "s|printf '#define LINUX_COMPILER \"%s\"\n' \"\$CC_VERSION, \$LD_VERSION\"|printf '#define LINUX_COMPILER \"%s\"\n' \"clang version 10.0.7 for Android NDK, GNU ld (binutils-2.27-bd24d23f) 2.27.0.20170315\"|" scripts/mkcompile_h
 
       - name: Build Kernel
         run: |
@@ -72,8 +77,6 @@ jobs:
           export SUBARCH="arm64"
           export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
-          # export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
-          # export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
