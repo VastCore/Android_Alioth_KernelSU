@@ -1,9 +1,9 @@
-name: Build Alioth (Release)
+name: Build Alioth (ZyCromerZ-Clang)
 on: [workflow_dispatch]
 
 jobs:
   build:
-    name: Build Alioth (Release)
+    name: Build Alioth (ZyCromerZ-Clang)
     runs-on: ubuntu-24.04
     steps:
 
