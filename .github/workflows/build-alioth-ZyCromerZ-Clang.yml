@@ -1,9 +1,9 @@
-name: Build Alioth (Neutron-Clang)
+name: Build Alioth (ZyCromerZ-Clang)
 on: [workflow_dispatch]
 
 jobs:
   build:
-    name: Build Alioth (Neutron-Clang)
+    name: Build Alioth (ZyCromerZ-Clang)
     runs-on: ubuntu-24.04
     steps:
 
@@ -20,7 +20,7 @@ jobs:
       - name: Initialize Compilation Environment
         run: |
           sudo apt-get update
-          sudo apt-get install git automake build-essential bc wget tar zstd -y
+          sudo apt-get install git automake build-essential bc libc6-dev-i386 g++-multilib gcc-multilib flex bison lzop zip -y
           
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,12 +28,12 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Neutron Clang Toolchain
+      - name: Get ZyCromerZ Clang Toolchain
         run: |
           mkdir -p toolchain/llvm
-          wget https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/10032024/neutron-clang-10032024.tar.zst
-          tar --zstd -xf neutron-clang-10032024.tar.zst -C toolchain/llvm --strip-components=1
-          rm -rf neutron-clang-10032024.tar.zst
+          wget -qO clang.tar.gz https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
+          tar -xf clang.tar.gz -C toolchain/llvm
+          rm -f clang.tar.gz
           toolchain/llvm/bin/clang --version
           
       - name: Get Python2 prebuilt

@@ -28,15 +28,19 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain (Proton-Clang + Python2)
+      - name: Get Proton Clang Toolchain
         run: |
           mkdir -p toolchain/llvm
           wget https://github.com/kdrag0n/proton-clang/archive/refs/tags/20210522.zip -O proton-clang.zip
           unzip -q proton-clang.zip -d toolchain/llvm
           mv toolchain/llvm/proton-clang-20210522/* toolchain/llvm/
           rm -rf toolchain/llvm/proton-clang-20210522
-          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
           rm -rf proton-clang.zip
+          toolchain/llvm/bin/clang --version
+          
+      - name: Get Python2 prebuilt
+        run: |
+          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
 
       - name: Processing submodules
         run: |

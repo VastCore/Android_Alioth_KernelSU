@@ -28,8 +28,7 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      # ========== 替换工具链步骤 ==========
-      - name: Get Toolchain (Google-Clang)
+      - name: Get Google Clang Toolchain
         run: |
           mkdir -p toolchain/llvm
           cd toolchain/llvm
@@ -37,8 +36,10 @@ jobs:
           tar -xzf clang.tar.gz
           rm -f clang.tar.gz
           cd ../../
+          toolchain/llvm/bin/clang --version
           
-          # 保留 Python 2.7 预编译环境（内核构建依赖）
+      - name: Get Python2 prebuilt
+        run: |
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
 
       - name: Processing submodules
@@ -74,10 +75,14 @@ jobs:
           export LOCALVERSION="-g92c089fc2d37"
           export KBUILD_BUILD_HOST=pangu-build-component-vendor-727090-8pdx4-w2b4x-lb74b
           export KBUILD_BUILD_USER=builder
+          # export KBUILD_BUILD_HOST=AICloudServer
+          # export KBUILD_BUILD_USER=VastCore
           export ARCH="arm64"
           export SUBARCH="arm64"
           export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
+          # export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+          # export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1

@@ -28,17 +28,17 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain (AOSP-Clang + Python2)
+      - name: Get AOSP Clang Toolchain
         run: |
           mkdir -p toolchain/llvm
-          # Download Impqxr aosp clang tar.xz
           wget https://github.com/Impqxr/aosp_clang_ci/releases/download/13289611/clang-13289611-linux-x86.tar.xz
-          # Extract tar.xz to toolchain/llvm
           tar -xJf clang-13289611-linux-x86.tar.xz -C toolchain/llvm --strip-components=1
-          # Pull python2 prebuilt (unchanged)
-          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
-          # Cleanup archive
           rm -rf clang-13289611-linux-x86.tar.xz
+          toolchain/llvm/bin/clang --version
+          
+      - name: Get Python2 prebuilt
+        run: |
+          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
 
       - name: Processing submodules
         run: |

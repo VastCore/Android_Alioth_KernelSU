@@ -28,17 +28,17 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain (WeebX-Clang + Python2)
+      - name: Get WeebX Clang Toolchain
         run: |
           mkdir -p toolchain/llvm
-          # Download WeebX-Clang 19.1.5
           wget https://github.com/XSans0/WeebX-Clang/releases/download/WeebX-Clang-19.1.5-release/WeebX-Clang-19.1.5.tar.gz
-          # Extract clang toolchain to toolchain/llvm
           tar -xf WeebX-Clang-19.1.5.tar.gz -C toolchain/llvm --strip-components=1
-          # Pull python2 prebuilt (unchanged)
-          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
-          # Cleanup archive
           rm -rf WeebX-Clang-19.1.5.tar.gz
+          toolchain/llvm/bin/clang --version
+          
+      - name: Get Python2 prebuilt
+        run: |
+          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
 
       - name: Processing submodules
         run: |
