@@ -20,7 +20,7 @@ jobs:
       - name: Initialize Compilation Environment
         run: |
           sudo apt-get update
-          sudo apt-get install git automake build-essential bc wget -y
+          sudo apt-get install git automake build-essential bc wget curl -y
           
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,13 +28,16 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain
+      - name: Get Toolchain (Latest ZYC Stable Clang instead of fixed 16.0.6)
         run: |
-          # 下载并解压指定的 Clang 16.0.6 工具链
           mkdir -p toolchain/llvm
-          wget -O clang.tar.gz "https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz"
-          tar -xzf clang.tar.gz -C toolchain/llvm --strip-components=1
+          cd toolchain/llvm
+          # 动态获取 ZYC 官方最新稳定 Clang 下载链接
+          CLANG_LINK=$(curl -s https://raw.githubusercontent.com/v3kt0r-87/Clang-Stable/main/clang-zyc.txt)
+          wget -q "$CLANG_LINK" -O clang.tar.gz
+          tar -xzf clang.tar.gz --strip-components=1
           rm -f clang.tar.gz
+          cd ../../
           
           # 保留 Python 2.7 预编译环境（内核构建依赖）
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
