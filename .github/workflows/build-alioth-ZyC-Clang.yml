@@ -85,7 +85,7 @@ jobs:
           export LLVM=1
           export LLVM_IAS=1
           export CLANG_TRIPLE="aarch64-linux-gnu-"
-          export CROSS_COMPILE="aarch64-linux-gnu-"
+          export CROSS_COMPILE="aarch64-linux-android-"
           make O=out alioth_perf_defconfig
           echo "=== CONFIG_KSU in .config ==="
           grep CONFIG_KSU out/.config || echo "WARNING: CONFIG_KSU NOT in .config!"
