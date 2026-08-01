@@ -1,9 +1,9 @@
-name: Build Alioth (ZyCromerZ-Clang)
+name: Build Alioth (Release)
 on: [workflow_dispatch]
 
 jobs:
   build:
-    name: Build Alioth (ZyCromerZ-Clang)
+    name: Build Alioth (Release)
     runs-on: ubuntu-24.04
     steps:
 
@@ -20,7 +20,7 @@ jobs:
       - name: Initialize Compilation Environment
         run: |
           sudo apt-get update
-          sudo apt-get install git automake build-essential bc wget tar -y
+          sudo apt-get install git automake build-essential bc wget -y
           
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,17 +28,16 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain (ZyCromerZ-Clang + Python2)
+      - name: Get Toolchain
         run: |
+          # 下载并解压指定的 Clang 16.0.6 工具链
           mkdir -p toolchain/llvm
-          wget https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
-          tar -xf Clang-16.0.6-20260510.tar.gz -C toolchain/llvm
-          mv toolchain/llvm/Clang-16.0.6-20260510/* toolchain/llvm/
-          rm -rf toolchain/llvm/Clang-16.0.6-20260510
+          wget -O clang.tar.gz "https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz"
+          tar -xzf clang.tar.gz -C toolchain/llvm --strip-components=1
+          rm -f clang.tar.gz
+          
+          # 保留 Python 2.7 预编译环境（内核构建依赖）
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
-          rm -rf Clang-16.0.6-20260510.tar.gz
-          ls toolchain/llvm/bin/
-          which clang ld.lld llvm-objdump
 
       - name: Processing submodules
         run: |
@@ -73,14 +72,10 @@ jobs:
           export LOCALVERSION="-g92c089fc2d37"
           export KBUILD_BUILD_HOST=pangu-build-component-vendor-727090-8pdx4-w2b4x-lb74b
           export KBUILD_BUILD_USER=builder
-          # export KBUILD_BUILD_HOST=AICloudServer
-          # export KBUILD_BUILD_USER=VastCore
           export ARCH="arm64"
           export SUBARCH="arm64"
           export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
-          # export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
-          # export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
