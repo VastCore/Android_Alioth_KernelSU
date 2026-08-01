@@ -1,10 +1,10 @@
-name: Build Alioth (ZYC-Clang)
+name: Build Alioth (ZyCromerZ-Clang)
 on: [workflow_dispatch]
 
 jobs:
   build:
-    name: Build Alioth (ZYC-Clang)
-    runs-on: ubuntu-24.04
+    name: Build Alioth (ZyCromerZ-Clang)
+    runs-on: ubuntu-22.04
     steps:
 
       - name: Set Beijing timezone
@@ -20,7 +20,7 @@ jobs:
       - name: Initialize Compilation Environment
         run: |
           sudo apt-get update
-          sudo apt-get install git automake build-essential bc wget tar xz-utils unzip -y
+          sudo apt-get install git automake build-essential bc wget tar -y
           
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,17 +28,17 @@ jobs:
           ref: HyperOS
           fetch-depth: 1
 
-      - name: Get Toolchain (ZYC-Clang + Python2)
+      - name: Get Toolchain (ZyCromerZ-Clang + Python2)
         run: |
-          mkdir -p toolchain
-          mkdir -p $HOME/zyc-clang
-          cd $HOME/zyc-clang
-          wget -q https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
-          tar -zxvf Clang-16.0.6-20260510.tar.gz
-          ln -s "$HOME/zyc-clang" toolchain/zyc-clang
+          mkdir -p toolchain/llvm
+          # Download ZyCromerZ Clang 16.0.6-20260510
+          wget https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
+          # Extract clang toolchain to toolchain/llvm
+          tar -xf Clang-16.0.6-20260510.tar.gz -C toolchain/llvm --strip-components=1
+          # Pull python2 prebuilt (unchanged)
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
-          rm -rf $HOME/zyc-clang/Clang-16.0.6-20260510.tar.gz
-          toolchain/zyc-clang/bin/clang --version
+          # Cleanup archive
+          rm -rf Clang-16.0.6-20260510.tar.gz
 
       - name: Processing submodules
         run: |
@@ -73,10 +73,14 @@ jobs:
           export LOCALVERSION="-g92c089fc2d37"
           export KBUILD_BUILD_HOST=pangu-build-component-vendor-727090-8pdx4-w2b4x-lb74b
           export KBUILD_BUILD_USER=builder
+          # export KBUILD_BUILD_HOST=AICloudServer
+          # export KBUILD_BUILD_USER=VastCore
           export ARCH="arm64"
           export SUBARCH="arm64"
-          export PATH="$GITHUB_WORKSPACE/toolchain/zyc-clang/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
-          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/zyc-clang/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
+          export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
+          # export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+          # export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
@@ -90,7 +94,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Alioth_KernelSU_ZYC-Clang16
+          name: Alioth_KernelSU
           path: |
             out/arch/arm64/boot/Image
             out/arch/arm64/boot/dts/vendor/qcom/*.dtb
