@@ -4,7 +4,7 @@ on: [workflow_dispatch]
 jobs:
   build:
     name: Build Alioth (ZyCromerZ-Clang)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
       - name: Set Beijing timezone
@@ -31,14 +31,14 @@ jobs:
       - name: Get Toolchain (ZyCromerZ-Clang + Python2)
         run: |
           mkdir -p toolchain/llvm
-          # Download ZyCromerZ Clang 16.0.6-20260510
           wget https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
-          # Extract clang toolchain to toolchain/llvm
-          tar -xf Clang-16.0.6-20260510.tar.gz -C toolchain/llvm --strip-components=1
-          # Pull python2 prebuilt (unchanged)
+          tar -xf Clang-16.0.6-20260510.tar.gz -C toolchain/llvm
+          mv toolchain/llvm/Clang-16.0.6-20260510/* toolchain/llvm/
+          rm -rf toolchain/llvm/Clang-16.0.6-20260510
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
-          # Cleanup archive
           rm -rf Clang-16.0.6-20260510.tar.gz
+          ls toolchain/llvm/bin/
+          which clang ld.lld llvm-objdump
 
       - name: Processing submodules
         run: |
