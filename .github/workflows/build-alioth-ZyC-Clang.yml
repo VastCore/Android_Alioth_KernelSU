@@ -23,7 +23,7 @@ jobs:
           sudo apt-get install git automake build-essential bc libc6-dev-i386 g++-multilib gcc-multilib flex bison lzop zip -y
           
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
           ref: HyperOS
           fetch-depth: 1
@@ -92,7 +92,7 @@ jobs:
           make -j$(nproc --all) O=out 2>&1
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: Alioth_KernelSU
           path: |
