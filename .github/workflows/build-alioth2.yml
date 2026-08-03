@@ -30,7 +30,7 @@ jobs:
 
       - name: Get Toolchain
         run: |
-          git clone https://github.com/kdrag0n/proton-clang.git --depth 1 toolchain/llvm
+          git clone https://github.com/VastCore/proton-clang13.git --depth 1 toolchain/llvm
           git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
 
       - name: Processing submodules
