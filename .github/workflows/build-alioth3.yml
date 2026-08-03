@@ -36,8 +36,8 @@ jobs:
 
       - name: Processing submodules
         run: |
-          git submodule update --init --recursive Baseband-guard
-          git submodule update --init --recursive KernelSU
+          git submodule update --init Baseband-guard
+          git submodule update --init KernelSU
           cd KernelSU
           git fetch --tags
           LATEST_TAG=$(git tag -l | sort -V | tail -n1)
@@ -82,6 +82,8 @@ jobs:
           export SUBARCH="arm64"
           export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
+          export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+          export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
 
           # Proton Clang 标准全 LLVM 编译参数（消除交叉前缀冲突）
           export CC=clang
