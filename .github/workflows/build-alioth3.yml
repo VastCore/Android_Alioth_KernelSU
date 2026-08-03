@@ -1,0 +1,116 @@
+name: Build Alioth3 (Release)
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    name: Build Alioth3 (Release)
+    runs-on: ubuntu-22.04
+    steps:
+
+      - name: Set Beijing timezone
+        uses: szenius/set-timezone@v1.2
+        with:
+          timezoneLinux: "Asia/Shanghai"
+
+      - name: Set SWAP to 5GiB
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 5
+
+      - name: Initialize Compilation Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install git automake build-essential bc cpio libssl-dev zip unzip -y
+          
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: HyperOS
+          fetch-depth: 1
+          submodules: false # 手动控制子模块更稳定
+
+      - name: Get Toolchain
+        run: |
+          git clone https://github.com/VastCore/proton-clang13.git --depth 1 toolchain/llvm
+          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
+
+      - name: Processing submodules
+        run: |
+          git submodule update --init --recursive Baseband-guard
+          git submodule update --init --recursive KernelSU
+          cd KernelSU
+          git fetch --tags
+          LATEST_TAG=$(git tag -l | sort -V | tail -n1)
+          echo "Latest KernelSU tag: $LATEST_TAG"
+          git checkout $LATEST_TAG
+
+      - name: Integrate KernelSU into build system
+        run: |
+          rm -rf drivers/kernelsu
+          cp -ra KernelSU/kernel drivers/kernelsu
+
+          # 自动写入 Kconfig 引用（缺失则添加）
+          if ! grep -q "source \"drivers/kernelsu/Kconfig\"" drivers/Kconfig; then
+            echo "source \"drivers/kernelsu/Kconfig\"" >> drivers/Kconfig
+          fi
+
+          # 自动写入 Makefile 编译条目
+          if ! grep -q "obj-y += kernelsu/" drivers/Makefile; then
+            echo "obj-y += kernelsu/" >> drivers/Makefile
+          fi
+
+          test -f drivers/kernelsu/Kconfig && echo "✅ Kconfig: OK"
+          test -f drivers/kernelsu/Makefile && echo "✅ Makefile: OK"
+
+      - name: Add KSU configs to defconfig
+        run: |
+          sed -i '/CONFIG_KSU=/d' arch/arm64/configs/alioth_perf_defconfig
+          echo -e "\nCONFIG_KSU=y\nCONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y" >> arch/arm64/configs/alioth_perf_defconfig
+          tail -5 arch/arm64/configs/alioth_perf_defconfig
+
+      - name: Clean old build artifacts
+        run: |
+          make mrproper O=out
+          rm -rf out
+
+      - name: Build Kernel with Proton Clang LLVM
+        run: |
+          export LOCALVERSION="-g92c089fc2d37"
+          export KBUILD_BUILD_HOST=pangu-build-component-vendor-727090-8pdx4-w2b4x-lb74b
+          export KBUILD_BUILD_USER=builder
+          export ARCH="arm64"
+          export SUBARCH="arm64"
+          export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
+
+          # Proton Clang 标准全 LLVM 编译参数（消除交叉前缀冲突）
+          export CC=clang
+          export LLVM=1
+          export LLVM_IAS=1
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip LD=ld.lld
+
+          make O=out alioth_perf_defconfig
+          grep CONFIG_KSU out/.config
+
+          # 编译并输出日志
+          make -j$(nproc --all) O=out 2>&1 | tee build.log
+
+      - name: Check compile result
+        run: |
+          if [ ! -f out/arch/arm64/boot/Image ]; then
+            echo "❌ Kernel compile failed, no Image generated!"
+            exit 1
+          fi
+          echo "✅ Kernel compiled successfully"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Alioth_KernelSU_Release
+          path: |
+            out/arch/arm64/boot/Image
+            out/arch/arm64/boot/dts/vendor/qcom/*.dtb
+            out/arch/arm64/boot/dtbo.img
+            build.log
