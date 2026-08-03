@@ -32,12 +32,13 @@ jobs:
       - name: Get Toolchain
         run: |
           git clone https://github.com/VastCore/proton-clang13.git --depth 1 toolchain/llvm
-          git clone https://github.com/VastCore/Alioth-Python-2.7.18-Mod.git --depth=1 toolchain/python2
+          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
 
       - name: Processing submodules
         run: |
-          git submodule update --init Baseband-guard
-          git submodule update --init KernelSU
+          git submodule update --init --remote --rebase --recursive android/Installer
+          git submodule update --init --remote --rebase --recursive Baseband-guard
+          git submodule update --init --remote --rebase --recursive KernelSU
           cd KernelSU
           git fetch --tags
           LATEST_TAG=$(git tag -l | sort -V | tail -n1)
