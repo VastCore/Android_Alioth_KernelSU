@@ -40,12 +40,13 @@ jobs:
           
       - name: Get Python2 prebuilt
         run: |
-          git clone https://github.com/VastCore/alioth-python-2.7.18-prebuilt.git --depth=1 toolchain/python2
+          git clone https://github.com/VastCore/Alioth-Python-2.7.18-Mod.git --depth=1 toolchain/python2
 
       - name: Processing submodules
         run: |
-          git submodule update --init --recursive Baseband-guard
-          git submodule update --init --recursive KernelSU
+          git submodule update --init --remote --rebase --recursive android/Installer
+          git submodule update --init --remote --rebase --recursive Baseband-guard
+          git submodule update --init --remote --rebase --recursive KernelSU
           cd KernelSU
           git fetch --tags
           LATEST_TAG=$(git tag -l | sort -V | tail -n1)
@@ -81,8 +82,8 @@ jobs:
           export SUBARCH="arm64"
           export PATH="$GITHUB_WORKSPACE/toolchain/llvm/bin:$GITHUB_WORKSPACE/toolchain/python2/bin:$PATH"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/toolchain/llvm/lib64:$GITHUB_WORKSPACE/toolchain/python2/lib:$LD_LIBRARY_PATH"
-          # export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
-          # export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
+          export KBUILD_COMPILER_STRING=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+          export KBUILD_LINKER_STRING=$(ld.lld --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//' | sed 's/(compatible with [^)]*)//')
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
