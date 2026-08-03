@@ -1,3 +1,7 @@
+[submodule "android/Installer"]
+	path = android/Installer
+	url = https://github.com/KopsourcesORG/KosminorKernelInstaller.git
+	branch = alioth
 [submodule "KernelSU"]
 	path = KernelSU
 	url = https://github.com/backslashxx/KernelSU.git
