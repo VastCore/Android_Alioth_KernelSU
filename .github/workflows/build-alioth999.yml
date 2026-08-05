@@ -33,10 +33,6 @@ jobs:
           git clone https://gitlab.com/ThankYouMario/android_prebuilts_clang-standalone.git --depth 1 toolchain/llvm
           git clone https://github.com/VastCore/Alioth-Python-2.7.18-Mod.git --depth=1 toolchain/python2
 
-      - name: Pull AnyKernel3
-        run: |
-          git clone https://github.com/osm0sis/AnyKernel3.git --depth=1 anykernel3
-
       - name: Processing submodules
         run: |
           git submodule update --init --remote --rebase --recursive android/Installer
