@@ -1,7 +1,7 @@
 [submodule "android/Installer"]
 	path = android/Installer
-	url = https://github.com/VastCore/Alioth_AnyKernel3.git
-	branch = kona
+	url = https://github.com/VastCore/Alioth_Kernel_Installer.git
+	branch = alioth
 [submodule "KernelSU"]
 	path = KernelSU
 	url = https://github.com/backslashxx/KernelSU.git
