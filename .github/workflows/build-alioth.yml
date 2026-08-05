@@ -88,7 +88,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Alioth_KernelSU
+          name: Alioth_KernelSU_Release
           path: |
             out/arch/arm64/boot/Image
             out/arch/arm64/boot/dts/vendor/qcom/*.dtb
