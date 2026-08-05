@@ -31,7 +31,7 @@ jobs:
       - name: Get ZyCromerZ Clang Toolchain
         run: |
           mkdir -p toolchain/llvm
-          wget -qO clang.tar.gz https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
+          wget -qO clang.tar.gz https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260716-release/Clang-16.0.6-20260716.tar.gz
           tar -xf clang.tar.gz -C toolchain/llvm
           rm -f clang.tar.gz
           toolchain/llvm/bin/clang --version
@@ -95,7 +95,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Alioth_KernelSU
+          name: Alioth_KernelSU_Release
           path: |
             out/arch/arm64/boot/Image
             out/arch/arm64/boot/dts/vendor/qcom/*.dtb
