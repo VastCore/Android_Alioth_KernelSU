@@ -85,25 +85,8 @@ jobs:
           grep CONFIG_KSU out/.config || echo "WARNING: CONFIG_KSU NOT in .config!"
           make -j$(nproc --all) O=out 2>&1
 
-      # ========== 新增 AnyKernel3 打包步骤 ==========
-      - name: Copy kernel files to AnyKernel3
+      - name: Pack Kernel
         run: |
           cp out/arch/arm64/boot/Image android/Installer/
+          cp out/arch/arm64/boot/dts/vendor/qcom/*.dtb android/Installer/
           cp out/arch/arm64/boot/dtbo.img android/Installer/
-          mkdir -p android/Installer/dtb
-          cp out/arch/arm64/boot/dts/vendor/qcom/*.dtb android/Installer/dtb/
-
-      - name: Build AnyKernel Flashable Zip
-        run: |
-          cd anykernel3
-          zip -r9 ../Alioth-KernelSU-AnyKernel3.zip . -x ".git/*" "README.md"
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: Alioth_KernelSU
-          path: |
-            out/arch/arm64/boot/Image
-            out/arch/arm64/boot/dts/vendor/qcom/*.dtb
-            out/arch/arm64/boot/dtbo.img
-            Alioth-KernelSU-AnyKernel3.zip
