@@ -15,7 +15,7 @@ jobs:
         sudo apt install -y bc bison build-essential flex gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev lz4
     - name: Get Clang
       run: |
-        wget https://github.com/ZyCromerZ/Clang/releases/download/20.0.0-clang-20250119/Clang-20.0.0.tar.gz
+        wget https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260716-release/Clang-16.0.6-20260716.tar.gz
         tar -xf Clang-20.0.0.tar.gz
     - name: Merge SukiSU Ultra
       run: |
