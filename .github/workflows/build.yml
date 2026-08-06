@@ -8,7 +8,7 @@ jobs:
     - name: Checkout Kernel Source
       uses: actions/checkout@v4
       with:
-        ref: 'hyper-2'
+        ref: 'HyperOS'
     - name: Setup Environment
       run: |
         sudo apt update
@@ -23,7 +23,7 @@ jobs:
     - name: Build Kernel
       run: |
         mkdir out
-        make O=out ARCH=arm64 alioth_defconfig
+        make O=out ARCH=arm64 alioth_perf_defconfig
         make O=out ARCH=arm64 -j$(nproc) CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CC=../clang/clang
     - name: Upload AnyKernel3
       uses: actions/upload-artifact@v4
