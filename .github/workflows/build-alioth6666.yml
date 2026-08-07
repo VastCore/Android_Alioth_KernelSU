@@ -1,0 +1,157 @@
+name: Build Alioth Kernel (Release With KernelSU)
+# 仅手动触发，禁止分支自动触发
+on:
+  workflow_dispatch:
+    inputs:
+      local_version:
+        description: Kernel LocalVersion Suffix
+        default: "-g92c089fc2d37"
+        type: string
+      build_host:
+        description: Build Host Info
+        default: "pangu-build-component-vendor-727090-8pdx4-w2b4x-lb74b"
+        type: string
+
+# 全局并发：避免重复构建
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 全局默认权限：最小权限原则
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build_kernel:
+    name: Build Alioth Release Kernel
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180 # 编译超时限制，防止卡死
+    steps:
+      - name: Set Timezone Asia/Shanghai
+        uses: szenius/set-timezone@v1.2
+        with:
+          timezoneLinux: "Asia/Shanghai"
+
+      - name: Allocate 5GiB Swap Space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 5
+
+      - name: Install System Build Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq git automake build-essential bc file tree
+
+      - name: Checkout Kernel Source Code
+        uses: actions/checkout@v4
+        with:
+          ref: HyperOS
+          fetch-depth: 1
+          submodules: false # 手动精细化更新子模块，避免冲突
+
+      # 工具链缓存，大幅加速重复构建
+      - name: Cache Clang & Python2 Toolchain
+        uses: actions/cache@v4
+        id: toolchain-cache
+        with:
+          path: toolchain
+          key: ${{ runner.os }}-alioth-toolchain-v1
+
+      - name: Download Prebuilt Clang & Python2 Toolchain
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p toolchain
+          git clone --depth 1 https://gitlab.com/ThankYouMario/android_prebuilts_clang-standalone.git toolchain/llvm
+          git clone --depth 1 https://github.com/VastCore/Alioth-Python-2.7.18-Mod.git toolchain/python2
+
+      - name: Initialize & Update Target Submodules
+        run: |
+          git submodule update --init --remote --rebase --recursive android/Installer Baseband-guard KernelSU
+
+      - name: Checkout Latest KernelSU Release Tag
+        run: |
+          cd KernelSU
+          git fetch --tags --quiet
+          LATEST_TAG=$(git tag -l | sort -V | tail -n1)
+          echo "KERNELSU_LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
+          git checkout "${LATEST_TAG}" --quiet
+          echo "Successfully checkout KernelSU latest tag: ${LATEST_TAG}"
+
+      - name: Integrate KernelSU Into Kernel Source Tree
+        run: |
+          # 清理旧软链接，覆盖写入内核驱动目录
+          rm -rf drivers/kernelsu
+          cp -ra KernelSU/kernel drivers/kernelsu
+
+          # 完整性校验，构建失败前置阻断
+          test -f drivers/kernelsu/Kconfig || { echo "ERROR: KernelSU Kconfig missing!"; exit 1; }
+          test -f drivers/kernelsu/Makefile || { echo "ERROR: KernelSU Makefile missing!"; exit 1; }
+          grep -q 'source.*kernelsu/Kconfig' drivers/Kconfig || echo "WARN: kernelsu Kconfig entry not pre-defined in drivers/Kconfig"
+          grep -q 'obj.*kernelsu/' drivers/Makefile || echo "WARN: kernelsu Makefile entry not pre-defined in drivers/Makefile"
+
+      - name: Append KernelSU Default Configs
+        run: |
+          # 兼容 GNU sed 换行写法，跨平台稳定
+          echo -e "\nCONFIG_KSU=y\nCONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED=y" >> arch/arm64/configs/alioth_perf_defconfig
+          echo "===== Updated defconfig tail ====="
+          tail -10 arch/arm64/configs/alioth_perf_defconfig
+
+      - name: Export Build Environment Variables
+        run: |
+          echo "LOCALVERSION=${{ github.event.inputs.local_version }}" >> $GITHUB_ENV
+          echo "KBUILD_BUILD_HOST=${{ github.event.inputs.build_host }}" >> $GITHUB_ENV
+          echo "KBUILD_BUILD_USER=builder" >> $GITHUB_ENV
+          echo "ARCH=arm64" >> $GITHUB_ENV
+          echo "SUBARCH=arm64" >> $GITHUB_ENV
+          echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
+          echo "CROSS_COMPILE=aarch64-linux-android-" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Build Kernel Image
+        run: |
+          # 注入工具链环境
+          export PATH="${{ github.workspace }}/toolchain/llvm/bin:${{ github.workspace }}/toolchain/python2/bin:$PATH"
+          export LD_LIBRARY_PATH="${{ github.workspace }}/toolchain/llvm/lib64:${{ github.workspace }}/toolchain/python2/lib:$LD_LIBRARY_PATH"
+          export CC=clang
+          export LLVM=1
+          export LLVM_IAS=1
+
+          # 记录编译器版本信息到日志
+          export KBUILD_COMPILER_STRING=$(clang --version | head -n1 | sed -E 's/\(http.*?\)//g; s/ +/ /g; s/[[:space:]]*$//')
+          export KBUILD_LINKER_STRING=$(ld.lld --version | head -n1 | sed -E 's/\(http.*?\)//g; s/\(compatible with [^)]*\)//; s/ +/ /g; s/[[:space:]]*$//')
+          echo "Compiler Info: $KBUILD_COMPILER_STRING"
+          echo "Linker Info: $KBUILD_LINKER_STRING"
+
+          # 生成配置并校验KSU开关状态
+          make O=out alioth_perf_defconfig
+          echo "===== Check CONFIG_KSU Status ====="
+          grep CONFIG_KSU out/.config || { echo "FATAL: CONFIG_KSU not activated! Build terminated"; exit 1; }
+
+          # 并行编译
+          make -j$(nproc --all) O=out 2>&1 | tee build.log
+        shell: bash
+
+      - name: Upload Build Log Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
+
+      - name: Upload Kernel Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Alioth_KernelSU_Release_${{ env.KERNELSU_LATEST_TAG }}
+          path: |
+            out/arch/arm64/boot/Image
+            out/arch/arm64/boot/dts/vendor/qcom/*.dtb
+            out/arch/arm64/boot/dtbo.img
+          retention-days: 30 # 产物保留时长
+
+      - name: Post Build Summary
+        run: |
+          echo "# Build Finished" >> $GITHUB_STEP_SUMMARY
+          echo "- Device: Alioth" >> $GITHUB_STEP_SUMMARY
+          echo "- KernelSU Version: ${{ env.KERNELSU_LATEST_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build Host: ${{ env.KBUILD_BUILD_HOST }}" >> $GITHUB_STEP_SUMMARY
